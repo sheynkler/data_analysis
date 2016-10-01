@@ -1,0 +1,11 @@
+body{
+  
+}
+
+.tab-content{
+  padding-top:10px;
+}
+
+.form-horizontal .control-label.text-left{
+    text-align: left;
+}

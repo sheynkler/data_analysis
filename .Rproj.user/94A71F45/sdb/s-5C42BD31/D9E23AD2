@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "\nrm(list = ls())\n\ninstall.packages('rsconnect')\ninstall.packages('shinyapps')\ndevtools::install_github(\"rstudio/shinyapps\")\nlibrary(shiny)\nlibrary(rsconnect)\nlibrary(shinyapps)\nrsconnect::setAccountInfo(name='daten', token='57E4BB18502891AF3F7155B313676652', secret='MrjVPvknz8S3rBVJ3GtDGCNDXxewJYelr8ICEQyN')\n\n\ngetwd()\ndeployApp()\n\n\n",
+    "created" : 1475330841548.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3533476897",
+    "id" : "D9E23AD2",
+    "lastKnownWriteTime" : 1472493410,
+    "last_content_update" : 1472493410,
+    "path" : "~/data_analysis/shinyAppsInstall.R",
+    "project_path" : "shinyAppsInstall.R",
+    "properties" : {
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
