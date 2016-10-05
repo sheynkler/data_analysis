@@ -2,8 +2,10 @@
 library(shiny)
 library(shinyjs)
 library(cluster)
+library(fBasics)
 # source("functions.R")
-options(shiny.maxRequestSize = 9 * 1024 ^ 2)
+#options(shiny.maxRequestSize = 9 * 1024 ^ 2)
+options(shiny.maxRequestSize=30*1024^2)
 #source("server_functions.R")
 
 shinyServer(function(input, output, session) {
@@ -77,6 +79,20 @@ shinyServer(function(input, output, session) {
     temp_data[, names(temp_data) %in% names_all == T]
     
   })
+  
+  temp_data_2000 <- reactive({
+    if(is.null(test_data())) return(NULL)
+    
+    temp_data <- temp_data()
+    if(nrow(temp_data) <= 2000) return(temp_data)
+    
+    index <- sample(1:nrow(temp_data), 2000)
+    temp_data_2000 <- temp_data[index,]
+    temp_data_2000
+    
+  })
+  
+  
   output$dependent <- renderUI({
     if(is.null(test_data())) return(NULL)
     nams <- names(test_data())
@@ -104,14 +120,16 @@ shinyServer(function(input, output, session) {
   output$plotMatrix <- renderPlot({
     if (is.null(temp_data()))
       return(NULL)
-    nams <- names(temp_data())
+    temp_data <- temp_data()
+    nams <- names(temp_data)
+    if(nrow(temp_data > 2000)) temp_data <- temp_data_2000()
     
     
     nams <- paste(nams, collapse = "+")
     nams <- paste0("~", nams)
     nams <- as.formula(nams)
     
-    pairs(nams, data = temp_data(),  main = "Simple Scatterplot Matrix", col = "blue")
+    pairs(nams, data = temp_data,  main = "Simple Scatterplot Matrix", col = "blue")
     
   })
   temp_data_numeric <- reactive({
@@ -121,8 +139,9 @@ shinyServer(function(input, output, session) {
     
     for (j in ncol(temp_data):1) {
       if (class(temp_data[, j]) %in% num_classes == F)
-        temp_data <- temp_data[,-j]
+        temp_data <- temp_data[,-j, drop = F]
     }
+    #print(temp_data)
     temp_data
   })
   output$data_titel <- renderText({ 
@@ -133,8 +152,24 @@ shinyServer(function(input, output, session) {
     
 })
   output$summary <- renderPrint(summary(temp_data()))
+  
+  output$summary_precisely <- renderDataTable({
+    temp_data_numeric <- temp_data_numeric()
+    #print(temp_data_numeric)
+    DT::datatable(basicStats(temp_data_numeric) ,
+                  options = list(
+                    pageLength = 16,
+                    paging = F,
+                    searching = F
+                  ))
+    
+  })
+  
+  
   output$str <- renderPrint(str(temp_data()))
   output$korr <- renderPrint({
+    if(is.null(test_data())) return(NULL)
+    
     temp_data <- temp_data_numeric()
     
     
@@ -144,19 +179,21 @@ shinyServer(function(input, output, session) {
       cov(temp_data)
   })
   output$simple_scatter <- renderUI({
+    if(is.null(test_data())) return(NULL)
+    
     checkboxGroupInput(
       "simple_scatter_names",
       label = ("change variable"),
       inline = T,
-      choices = as.list(c(names(temp_data(
-        
-      )))),
+      choices = as.list(c(names(temp_data()))),
       selected = names(temp_data())[1:2]
     )
     
     
   })
   output$hist_change_names_ui <- renderUI({
+    if(is.null(test_data())) return(NULL)
+    
     temp_data <- temp_data_numeric()
     
     
@@ -175,6 +212,7 @@ shinyServer(function(input, output, session) {
     if (is.null(temp_data_numeric()))
       return(NULL)
     temp_data <- temp_data_numeric()
+    if(nrow(temp_data > 2000)) temp_data <- temp_data_2000()
     
     nams <- input$hist_change_names
     
@@ -193,6 +231,8 @@ shinyServer(function(input, output, session) {
     if (is.null(temp_data()))
       return(NULL)
     temp_data <- temp_data()
+    if(nrow(temp_data > 2000)) temp_data <- temp_data_2000()
+    
     nams <- input$simple_scatter_names
     if (input$simple_scatter_names_change) {
       nams1 <- nams[1]
@@ -266,6 +306,8 @@ shinyServer(function(input, output, session) {
     mydata
   })
   Hierarchical_cluster_fit <- reactive({
+    if(is.null(test_data())) return(NULL)
+    
     if(input$cluster_scale) mydata <- scale_cluster_data()
     else mydata <- cluster_data()
     # Ward Hierarchical Clustering
@@ -274,13 +316,19 @@ shinyServer(function(input, output, session) {
     fit
   })
   output$cluster_plot <- renderPlot({
+    if(is.null(test_data())) return(NULL)
+    
     plot(Hierarchical_cluster_fit())
   })
   output$cluster_center <- renderPrint({
+    if(is.null(test_data())) return(NULL)
+    
     groups <- cutree(Hierarchical_cluster_fit(), k=input$number_clusters)
     aggregate(cluster_data(),by=list(groups),FUN=mean)
   } )
   output$number_of_clusters <- renderPlot({
+    if(is.null(test_data())) return(NULL)
+    
     if(input$cluster_scale) mydata <- scale_cluster_data()
     else mydata <- cluster_data()
     wss <- (nrow(mydata)-1)*sum(apply(mydata,2,var))
@@ -290,6 +338,8 @@ shinyServer(function(input, output, session) {
          ylab="Within groups sum of squares") 
   })
   part_cluster_fit <- reactive({
+    if(is.null(test_data())) return(NULL)
+    
     if(input$cluster_scale) mydata <- scale_cluster_data()
     else mydata <- cluster_data()
     fit <- kmeans(mydata, input$number_clusters)
@@ -297,11 +347,15 @@ shinyServer(function(input, output, session) {
     fit
   })
   output$part_cluster_center <- renderPrint({
+    if(is.null(test_data())) return(NULL)
+    
     fit <- part_cluster_fit()
     aggregate(cluster_data(), by=list(fit$cluster),FUN=mean)
     
   })
   output$part_cluster_plot <- renderPlot({
+    if(is.null(test_data())) return(NULL)
+    
     fit <- part_cluster_fit()
     clusplot(cluster_data(), fit$cluster, color=TRUE, shade=TRUE,
              labels=2, lines=0)

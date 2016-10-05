@@ -87,7 +87,22 @@ shinyUI(
                      #numericInput("nrow", label = h3("Показать строк"), value = 10),
                      dataTableOutput("contents")),
             tabPanel("Summary",
-                     verbatimTextOutput("summary")),
+                     radioButtons(
+                       "summary_choos",
+                       label = "",
+                       inline = T,
+                       choices = list("short" = 1, "precisely (only numeric)" = 2),
+                       selected = 1
+                     ),
+                     conditionalPanel(
+                       condition = "input.summary_choos == 1",
+                       verbatimTextOutput("summary")
+                     ),
+                     conditionalPanel(
+                       condition = "input.summary_choos == 2",
+                       dataTableOutput("summary_precisely")
+                     )
+                     ),
             tabPanel("Str",
                      verbatimTextOutput("str")),
             tabPanel(
