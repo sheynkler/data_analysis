@@ -1,20 +1,22 @@
 
+
 library(shiny)
 library(shinyjs)
-library(cluster)
+#library(cluster)
 library(fBasics)
+library(corrplot)
+library(ggplot2)
+library(mclust)
 # source("functions.R")
 #options(shiny.maxRequestSize = 9 * 1024 ^ 2)
-options(shiny.maxRequestSize=30*1024^2)
+options(shiny.maxRequestSize = 30 * 1024 ^ 2)
 #source("server_functions.R")
 
 shinyServer(function(input, output, session) {
-  
-  
   # INPUT
   
-
-
+  
+  
   observe({
     if (input$submit > 0) {
       shinyjs::toggle(id = "enter", anim = TRUE)
@@ -81,39 +83,49 @@ shinyServer(function(input, output, session) {
   })
   
   temp_data_2000 <- reactive({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
     temp_data <- temp_data()
-    if(nrow(temp_data) <= 2000) return(temp_data)
+    if (nrow(temp_data) <= 2000)
+      return(temp_data)
     
     index <- sample(1:nrow(temp_data), 2000)
-    temp_data_2000 <- temp_data[index,]
+    temp_data_2000 <- temp_data[index, ]
     temp_data_2000
     
   })
   
   
   output$dependent <- renderUI({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     nams <- names(test_data())
     radioButtons('dependet_pro', 'Dependent variable', choices = as.list(nams))
   })
   output$undependent <- renderUI({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     nams <- names(test_data())
     dependet <- input$dependet_pro
     nams <- nams[nams %in% dependet == F]
-    checkboxGroupInput('undependet_pro', 'Undependent variable', choices = as.list(nams), selected = nams)
+    checkboxGroupInput(
+      'undependet_pro',
+      'Undependent variable',
+      choices = as.list(nams),
+      selected = nams
+    )
   })
   # OUTPUT DATA
   
-  output$contents <- renderDataTable({
+  output$data_table <- renderDataTable({
     temp_data <- temp_data()
     if (is.null(temp_data))
       return(temp_data)
     if (class(temp_data) == "data.frame" &
         is.null(temp_data) == F)
-      temp_data
+      DT::datatable(temp_data,
+                    options = list(searching = F))
     
     
   })
@@ -122,14 +134,18 @@ shinyServer(function(input, output, session) {
       return(NULL)
     temp_data <- temp_data()
     nams <- names(temp_data)
-    if(nrow(temp_data > 2000)) temp_data <- temp_data_2000()
+    if (nrow(temp_data > 2000))
+      temp_data <- temp_data_2000()
     
     
     nams <- paste(nams, collapse = "+")
     nams <- paste0("~", nams)
     nams <- as.formula(nams)
     
-    pairs(nams, data = temp_data,  main = "Simple Scatterplot Matrix", col = "blue")
+    pairs(nams,
+          data = temp_data,
+          main = "Simple Scatterplot Matrix",
+          col = "blue")
     
   })
   temp_data_numeric <- reactive({
@@ -139,18 +155,18 @@ shinyServer(function(input, output, session) {
     
     for (j in ncol(temp_data):1) {
       if (class(temp_data[, j]) %in% num_classes == F)
-        temp_data <- temp_data[,-j, drop = F]
+        temp_data <- temp_data[, -j, drop = F]
     }
     #print(temp_data)
     temp_data
   })
-  output$data_titel <- renderText({ 
+  output$data_titel <- renderText({
     inFileString <- input$selectDemoData
     if (inFileString == "")
       return(NULL)
-    as.character(dates_data_frame$Title[ dates_data_frame$Item == input$selectDemoData])
+    as.character(dates_data_frame$Title[dates_data_frame$Item == input$selectDemoData])
     
-})
+  })
   output$summary <- renderPrint(summary(temp_data()))
   
   output$summary_precisely <- renderDataTable({
@@ -167,8 +183,9 @@ shinyServer(function(input, output, session) {
   
   
   output$str <- renderPrint(str(temp_data()))
-  output$korr <- renderPrint({
-    if(is.null(test_data())) return(NULL)
+  output$korr_table <- renderTable({
+    if (is.null(test_data()))
+      return(NULL)
     
     temp_data <- temp_data_numeric()
     
@@ -178,21 +195,38 @@ shinyServer(function(input, output, session) {
     else
       cov(temp_data)
   })
+  
+  output$korrelation_plot <- renderPlot({
+    if (is.null(test_data()))
+      return(NULL)
+    
+    temp_data <- temp_data_numeric()
+    M <- cor(temp_data)
+    
+    if (input$cor_cov == 1)
+      corrplot(M, method = input$selectKorr)
+    else
+      NULL
+  })
+  
   output$simple_scatter <- renderUI({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
     checkboxGroupInput(
       "simple_scatter_names",
       label = ("change variable"),
       inline = T,
-      choices = as.list(c(names(temp_data()))),
+      choices = as.list(c(names(temp_data(
+      )))),
       selected = names(temp_data())[1:2]
     )
     
     
   })
   output$hist_change_names_ui <- renderUI({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
     temp_data <- temp_data_numeric()
     
@@ -212,17 +246,21 @@ shinyServer(function(input, output, session) {
     if (is.null(temp_data_numeric()))
       return(NULL)
     temp_data <- temp_data_numeric()
-    if(nrow(temp_data > 2000)) temp_data <- temp_data_2000()
+    if (nrow(temp_data > 2000))
+      temp_data <- temp_data_2000()
     
     nams <- input$hist_change_names
     
     hist(
       temp_data[, nams],
       main = paste("Histogram of", nams),
-      xlab = nams,  col = "blue",
-      probability = input$hist_probability
+      xlab = nams,
+      col = "cornflowerblue",
+      probability = input$hist_probability,
+      breaks = input$number_breaks
     )
-    if(input$hist_probability) lines(density(temp_data[, nams]), col = "green", lwd = 3)
+    if (input$hist_probability)
+      lines(density(temp_data[, nams]), col = "green", lwd = 3)
     
     
     
@@ -231,7 +269,8 @@ shinyServer(function(input, output, session) {
     if (is.null(temp_data()))
       return(NULL)
     temp_data <- temp_data()
-    if(nrow(temp_data > 2000)) temp_data <- temp_data_2000()
+    if (nrow(temp_data > 2000))
+      temp_data <- temp_data_2000()
     
     nams <- input$simple_scatter_names
     if (input$simple_scatter_names_change) {
@@ -246,12 +285,12 @@ shinyServer(function(input, output, session) {
     if (length(nams) != 2)
       return(NULL)
     else
-      if(input$ggplot2){
+      if (input$ggplot2) {
         c <- ggplot(temp_data, aes_string(nams1, nams2))
         c + stat_smooth(method = "lm") + geom_point() +  ggtitle(paste(nams1, "vs", nams2))
       }
     else{
-            plot(
+      plot(
         temp_data[, nams1],
         temp_data[, nams2],
         main = paste(nams1, "vs", nams2),
@@ -261,8 +300,8 @@ shinyServer(function(input, output, session) {
         pch = 19
       )
     }
-      
-
+    
+    
     
     
     
@@ -271,7 +310,8 @@ shinyServer(function(input, output, session) {
   # REGRESSIA
   
   lm_fit <- reactive({
-        if(is.null(temp_data())) return(NULL)
+    if (is.null(temp_data()))
+      return(NULL)
     
     temp_data <- temp_data()
     dependent_ <-  input$dependet_pro
@@ -294,74 +334,147 @@ shinyServer(function(input, output, session) {
   # CLUSTER
   
   cluster_data <- reactive({
-    if(is.null(temp_data_numeric())) return(NULL)
-    mydata <- na.omit(temp_data_numeric()) 
-    #mydata <- scale(mydata) 
+    if (is.null(temp_data_numeric()))
+      return(NULL)
+    mydata <- na.omit(temp_data_numeric())
+    #mydata <- scale(mydata)
     mydata
   })
   scale_cluster_data <- reactive({
-    if(is.null(cluster_data())) return(NULL)
-    #mydata <- na.omit(temp_data_numeric()) 
-    mydata <- scale(cluster_data()) 
+    if (is.null(cluster_data()))
+      return(NULL)
+    #mydata <- na.omit(temp_data_numeric())
+    mydata <- scale(cluster_data())
     mydata
   })
   Hierarchical_cluster_fit <- reactive({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
-    if(input$cluster_scale) mydata <- scale_cluster_data()
-    else mydata <- cluster_data()
+    if (input$cluster_scale)
+      mydata <- scale_cluster_data()
+    else
+      mydata <- cluster_data()
     # Ward Hierarchical Clustering
-    d <- dist(mydata, method = "euclidean") 
-    fit <- hclust(d, method="ward.D2")
+    d <- dist(mydata, method = "euclidean")
+    fit <- hclust(d, method = "ward.D2")
     fit
   })
-  output$cluster_plot <- renderPlot({
-    if(is.null(test_data())) return(NULL)
+  output$Hierarchical_cluster_plot <- renderPlot({
+    if (is.null(test_data()))
+      return(NULL)
     
     plot(Hierarchical_cluster_fit())
+    if (input$h_cluster_borders)
+      rect.hclust(Hierarchical_cluster_fit(),
+                  k = input$number_clusters,
+                  border = "red")
+    
   })
   output$cluster_center <- renderPrint({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
-    groups <- cutree(Hierarchical_cluster_fit(), k=input$number_clusters)
-    aggregate(cluster_data(),by=list(groups),FUN=mean)
-  } )
+    groups <-
+      cutree(Hierarchical_cluster_fit(), k = input$number_clusters)
+    aggregate(cluster_data(), by = list(groups), FUN = mean)
+  })
   output$number_of_clusters <- renderPlot({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
-    if(input$cluster_scale) mydata <- scale_cluster_data()
-    else mydata <- cluster_data()
-    wss <- (nrow(mydata)-1)*sum(apply(mydata,2,var))
-    for (i in 2:15) wss[i] <- sum(kmeans(mydata,
-                                         centers=i)$withinss)
-    plot(1:15, wss, type="b", xlab="Number of Clusters",
-         ylab="Within groups sum of squares") 
+    if (input$cluster_scale)
+      mydata <- scale_cluster_data()
+    else
+      mydata <- cluster_data()
+    wss <- (nrow(mydata) - 1) * sum(apply(mydata, 2, var))
+    for (i in 2:15)
+      wss[i] <- sum(kmeans(mydata,
+                           centers = i)$withinss)
+    plot(1:15,
+         wss,
+         type = "b",
+         xlab = "Number of Clusters",
+         ylab = "Within groups sum of squares")
   })
   part_cluster_fit <- reactive({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
-    if(input$cluster_scale) mydata <- scale_cluster_data()
-    else mydata <- cluster_data()
+    if (input$cluster_scale)
+      mydata <- scale_cluster_data()
+    else
+      mydata <- cluster_data()
     fit <- kmeans(mydata, input$number_clusters)
-
+    
     fit
   })
   output$part_cluster_center <- renderPrint({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
     fit <- part_cluster_fit()
-    aggregate(cluster_data(), by=list(fit$cluster),FUN=mean)
+    aggregate(cluster_data(),
+              by = list(fit$cluster),
+              FUN = mean)
     
   })
   output$part_cluster_plot <- renderPlot({
-    if(is.null(test_data())) return(NULL)
+    if (is.null(test_data()))
+      return(NULL)
     
     fit <- part_cluster_fit()
-    clusplot(cluster_data(), fit$cluster, color=TRUE, shade=TRUE,
-             labels=2, lines=0)
+    clusplot(
+      cluster_data(),
+      fit$cluster,
+      color = TRUE,
+      shade = TRUE,
+      labels = 2,
+      lines = 0
+    )
   })
-
-
+  
+  
+  based_fit <- reactive({
+    if (is.null(test_data()))
+      return(NULL)
+    if (input$cluster_scale)
+      mydata <- scale_cluster_data()
+    else
+      mydata <- cluster_data()
+    fit <- Mclust(mydata)
+    fit
+  })
+  output$based_summary <- renderPrint({
+    if (is.null(test_data()))
+      return(NULL)
+    fit <- based_fit()
+    summary(fit)
+  })
+  output$based_plot <- renderPlot({
+    if (is.null(test_data()))
+      return(NULL)
+    
+    fit <- based_fit()
+    which_plot <- input$selectbased_plot
+    plot(fit, which_plot)
+  })
+  output$based_center <- renderPrint({
+    if (is.null(test_data()))
+      return(NULL)
+    fit <- based_fit()
+    mydata <- cluster_data()
+    aggregate(mydata,
+              by = list(fit$classification),
+              FUN = mean)
+  })
+  
+  output$select_number_of_cluster_ui <- renderUI({
+    
+    numericInput("number_clusters",
+                 label = ("Number of clusters"),
+                 value = 5)
+  })
   
   
 })

@@ -1,6 +1,7 @@
 rm(list = ls())
 library(MASS)
 library(stringr)
+library(cluster)
 dates <- data()
 dates_data_frame <- as.data.frame(dates$results)
 
@@ -42,6 +43,25 @@ names_dates_datasets <- c("", names_dates_datasets)
 
 
 num_classes <- c("integer", "numeric", "double")
+
+
+
+lm_diagnostik_list <- c(
+  "Residuals vs Fitted" = 1,
+  "Normal Q-Q" = 2,
+  "Scale-Location" = 3,
+  "Cook's distance" = 4,
+  "Residuals vs Leverage" = 5
+)
+
+based_cluster_list <- c("BIC",
+                        "classification",
+                        "uncertainty",
+                        "density")
+
+plot_korrelation <-
+  c("circle", "pie", "color", "number", "square", "ellipse", "shade")
+#“circle”, “square”, “ellipse”, “number”, “shade”, “color”, “pie”
 
 
 
