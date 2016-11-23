@@ -64,5 +64,11 @@ plot_korrelation <-
 #“circle”, “square”, “ellipse”, “number”, “shade”, “color”, “pie”
 
 
-
+first_text <- "Hi! This is a Data Analysis Page.<br><br>
+You can explore your basic data statistics, and conduct cluster and regression analysis.<br>
+First, you have to upload your data. <br>
+You can also practice on preloaded data from R collection.<br>
+This project is still in process, we are working on upgrades and extensions.<br> Next months we are going to add tabs for decision trees, Principal Component Analysis (PCA) and a few other features.<br>
+This is not a commercial project. We build this page in our free time, and it is open source.<br><br> Please send your suggestions to cheinkler@gmail.com.
+"
 

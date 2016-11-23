@@ -7,18 +7,23 @@ library(fBasics)
 library(corrplot)
 library(ggplot2)
 library(mclust)
-# source("functions.R")
+# source("server_functions.R")
 #options(shiny.maxRequestSize = 9 * 1024 ^ 2)
 options(shiny.maxRequestSize = 30 * 1024 ^ 2)
 #source("server_functions.R")
 
 shinyServer(function(input, output, session) {
   # INPUT
+  output$first_text <- renderUI({
+    if (is.null(test_data()) == F)
+      return(NULL)
+    HTML(first_text)
+  })
   
   
   
   observe({
-    if (input$submit > 0) {
+    if (input$submit_csv_options > 0) {
       shinyjs::toggle(id = "enter", anim = TRUE)
     }
   })
@@ -40,7 +45,7 @@ shinyServer(function(input, output, session) {
   })
   test_data <- reactive({
     print(input$file1)
-    if (input$tabs == "demo") {
+    if (input$tabs_enter == "demo") {
       inFileString <- input$selectDemoData
       if (inFileString == "")
         return(NULL)
@@ -70,15 +75,20 @@ shinyServer(function(input, output, session) {
   # HANDLING
   
   temp_data <- reactive({
-    temp_data <- test_data()
     
-    if (is.null(input$dependet_pro))
-      return(temp_data)
-    names_all <- c(input$undependet_pro, input$dependet_pro)
+    
+    temp_data <- test_data()
+    if (is.null(test_data()))
+      return(NULL)
+
+    #  
+    names_all <- input$select_variables
+    if (input$select_data_cluster_model == "Model") names_all <- c(input$undependet_pro, input$dependet_pro)
+    
     names_temp_data <- names(temp_data)
     names_off <-
       names_temp_data[names_temp_data %in% names_all == F]
-    temp_data[, names(temp_data) %in% names_all == T]
+    temp_data[, names(temp_data) %in% names_all == T, drop = F]
     
   })
   
@@ -116,6 +126,19 @@ shinyServer(function(input, output, session) {
       selected = nams
     )
   })
+  output$select_variables_ui <- renderUI({
+    if (is.null(test_data()))
+      return(NULL)
+    nams <- names(test_data())
+    #dependet <- input$dependet_pro
+    #nams <- nams[nams %in% dependet == F]
+    checkboxGroupInput(
+      'select_variables',
+      'Variables',
+      choices = as.list(nams),
+      selected = nams
+    )
+  })
   # OUTPUT DATA
   
   output$data_table <- renderDataTable({
@@ -147,6 +170,9 @@ shinyServer(function(input, output, session) {
           main = "Simple Scatterplot Matrix",
           col = "blue")
     
+  },
+  height = function() {
+    session$clientData$output_plotMatrix_width
   })
   temp_data_numeric <- reactive({
     if (is.null(temp_data()))
@@ -235,7 +261,7 @@ shinyServer(function(input, output, session) {
     radioButtons(
       "hist_change_names",
       label = ("change variable"),
-      inline = T,
+      inline = F,
       choices = as.list(c(names(temp_data))),
       selected = names(temp_data)[1]
     )
@@ -272,20 +298,22 @@ shinyServer(function(input, output, session) {
     if (nrow(temp_data > 2000))
       temp_data <- temp_data_2000()
     
-    nams <- input$simple_scatter_names
+    #nams <- input$simple_scatter_names
+    
+    nams_new_x <- input$select_x_variable
+    nams_new_y <- input$select_y_variable
+    
     if (input$simple_scatter_names_change) {
-      nams1 <- nams[1]
-      nams2 <- nams[2]
+      nams1 <- nams_new_x
+      nams2 <- nams_new_y
     }
     else{
-      nams1 <- nams[2]
-      nams2 <- nams[1]
+      nams1 <- nams_new_y
+      nams2 <- nams_new_x
     }
     
-    if (length(nams) != 2)
-      return(NULL)
-    else
-      if (input$ggplot2) {
+    
+    if (input$ggplot2) {
         c <- ggplot(temp_data, aes_string(nams1, nams2))
         c + stat_smooth(method = "lm") + geom_point() +  ggtitle(paste(nams1, "vs", nams2))
       }
@@ -300,11 +328,25 @@ shinyServer(function(input, output, session) {
         pch = 19
       )
     }
-    
-    
-    
-    
-    
+
+  })
+  output$select_x_variable_ui <- renderUI({
+    if (is.null(test_data()))
+      return(NULL)
+    nams <- names(test_data())
+    radioButtons('select_x_variable', label = NULL, choices = as.list(nams))
+  })
+  output$select_y_variable_ui <- renderUI({
+    if (is.null(test_data()))
+      return(NULL)
+    nams <- names(test_data())
+    dependet <- input$select_x_variable
+    nams <- nams[nams %in% dependet == F]
+    radioButtons(
+      'select_y_variable',
+      label = NULL,
+      choices = as.list(nams)
+    )
   })
   
   # REGRESSIA
@@ -433,6 +475,13 @@ shinyServer(function(input, output, session) {
       lines = 0
     )
   })
+'  output$part_cluster_plot_2d <- renderPlot({
+    if (is.null(test_data()))
+      return(NULL)
+    
+    fit <- part_cluster_fit()
+
+  })'
   
   
   based_fit <- reactive({
@@ -458,6 +507,9 @@ shinyServer(function(input, output, session) {
     fit <- based_fit()
     which_plot <- input$selectbased_plot
     plot(fit, which_plot)
+  },
+  height = function() {
+    session$clientData$output_based_plot_width
   })
   output$based_center <- renderPrint({
     if (is.null(test_data()))
@@ -475,6 +527,10 @@ shinyServer(function(input, output, session) {
                  label = ("Number of clusters"),
                  value = 5)
   })
+  observe({
+    print(session$clientData$output_based_plot_width)
+  })
+  
   
   
 })

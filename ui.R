@@ -20,19 +20,19 @@ shinyUI(
     titlePanel("Data analysis"),
     fluidRow(
       column(
-        4,
+        3,
         
         tags$div(
           tags$h3("Enter the data"),
           tabsetPanel(
-            id = "tabs",
+            id = "tabs_enter",
             selected = "demo",
             type = "tabs",
             tabPanel(
               "from computer",
-              value = "from_computer",
+              value = "enter_from_computer",
               tags$div(class = "small", csvFileInput()),
-              actionButton("submit", "collapse/expand")
+              actionButton("submit_csv_options", "collapse/expand")
             ),
             tabPanel(
               "demo",
@@ -59,9 +59,18 @@ shinyUI(
           #,
           #uiOutput("dependent_2")
         ),
-        uiOutput("dependent")
+        conditionalPanel(
+          condition = "input.select_data_cluster_model=='Model'",
+          uiOutput("dependent")
+          ,
+          uiOutput("undependent")
+        )
         ,
-        uiOutput("undependent")
+        conditionalPanel(
+          condition = "input.select_data_cluster_model!='Model'",
+          uiOutput("select_variables_ui")
+        )
+        
         #,
         
         #'table_undependet_var()',
@@ -70,9 +79,11 @@ shinyUI(
         
         
       ),
-      column(8,
+      column(9,
+             
              tabsetPanel(
                type = "tabs",
+               id = "select_data_cluster_model",
                tabPanel(
                  "Data",
                  tabsetPanel(
@@ -80,6 +91,8 @@ shinyUI(
                    
                    tabPanel("Head",
                             #numericInput("nrow", label = h3("Показать строк"), value = 10),
+                            br(),
+                            h4(htmlOutput("first_text")),
                             dataTableOutput("data_table")),
                    tabPanel(
                      "Summary",
@@ -95,15 +108,15 @@ shinyUI(
                      conditionalPanel(condition = "input.summary_choos == 2",
                                       dataTableOutput("summary_precisely"))
                    ),
-                   tabPanel("Str",
+                   tabPanel("Data Structure",
                             verbatimTextOutput("str")),
                    tabPanel(
-                     "Korr",
+                     "Correlation",
                      radioButtons(
                        "cor_cov",
                        label = "",
                        inline = T,
-                       choices = list("Korrelation" = 1, "Kovariation" = 2),
+                       choices = list("Correlation" = 1, "Covariance" = 2),
                        selected = 1
                      ),
                      tableOutput("korr_table"),
@@ -140,11 +153,19 @@ shinyUI(
                                 plotOutput("plotMatrix")),
                        tabPanel(
                          "Simple",
-                         tags$div(
-                           class = "form-group-sm  form-inline",
-                           
-                           uiOutput("simple_scatter"),
-                           checkboxInput(
+                         fluidRow(
+                           column(2,
+                                  fluidRow(
+                                    column(6,
+                                       "X",
+                                       uiOutput("select_x_variable_ui")
+                                           ),
+                                    column(6,
+                                         "Y"  ,
+                                         uiOutput("select_y_variable_ui")
+                                    )
+                                  ),
+                                                             checkboxInput(
                              "simple_scatter_names_change",
                              label = "Change Axis",
                              value = F
@@ -152,36 +173,42 @@ shinyUI(
                            checkboxInput("ggplot2",
                                          label = "ggplot2",
                                          value = F)
-                         ),
+                                  
+                                  ),
+                           column(10,
+                                                         
+                           
+                           #uiOutput("simple_scatter"),
+
+                         
                          
                          plotOutput("simple_scatter_plot")
+                           )
+                         )
+                         
+
                        ),
                        tabPanel(
                          "Hist",
                          
                          fluidRow(
-                           column(4,
-                                  uiOutput("hist_change_names_ui")),
-                           column(
-                             4,
-                             checkboxInput("hist_probability", label = "Probability with density", value = T)
-                           ),
-                           column(4,
-                                  numericInput(
-                                    "number_breaks",
-                                    label = ("Number breaks"),
-                                    value = 10
-                                  ))
+                           column(2,
+                                  uiOutput("hist_change_names_ui"),
+                           checkboxInput("hist_probability", label = "Probability with density", value = T),
+                           numericInput(
+                             "number_breaks",
+                             label = ("Number breaks"),
+                             value = 10
+                           )),
+                           column(10,
+                                  plotOutput("hist_plot")
+                           )
                            
-                         ),
                          
-                         
-                         
-                         plotOutput("hist_plot")
                        )
                        
                        
-                     )
+                     ))
                      
                    )
                    
@@ -231,7 +258,9 @@ shinyUI(
                        tabPanel("Center",
                                 verbatimTextOutput("part_cluster_center")),
                        tabPanel("Plot",
-                                plotOutput("part_cluster_plot"))
+                                plotOutput("part_cluster_plot")),
+                       tabPanel("Plot 2d",
+                                plotOutput("part_cluster_plot_2d"))
                      )
                    ),
                    tabPanel(
@@ -275,10 +304,7 @@ shinyUI(
                                        ),
                                        plotOutput("diagnostic_Plot")
                                      )
-                                   )),
-                          tabPanel("Tree",
-                                   tabsetPanel(type = "tabs",
-                                               tabPanel("Random Forests ")))
+                                   )) #, tabPanel("Tree",     tabsetPanel(type = "tabs",   tabPanel("Random Forests ")))
                         ))
              ))
     )
