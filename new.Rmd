@@ -1,0 +1,32 @@
+---
+title: "Data Analysis report"
+#author: "Sh"
+#date: "7 November 2016"
+output: pdf_document
+
+params: 
+  number_breaks: 5
+  temp_data: NA
+
+    
+---
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align='left')
+
+
+```
+
+
+
+```{r echo=F}
+
+knitr::kable(head(params$temp_data), format = "markdown", caption = "Head of the data", align = "l")
+
+print(str(params$temp_data))
+
+```

@@ -1,4 +1,4 @@
-csvFileInput <- function(id = "csv_input") {
+show_csvFileInput <- function(id = "csv_input") {
   # Create a namespace function using the provided id
   ns <- NS("csv_input")
   

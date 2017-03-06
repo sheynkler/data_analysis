@@ -2,6 +2,10 @@ rm(list = ls())
 library(MASS)
 library(stringr)
 library(cluster)
+
+library(d3heatmap)
+source("module/module.R")
+
 dates <- data()
 dates_data_frame <- as.data.frame(dates$results)
 
@@ -69,6 +73,6 @@ You can explore your basic data statistics, and conduct cluster and regression a
 First, you have to upload your data. <br>
 You can also practice on preloaded data from R collection.<br>
 This project is still in process, we are working on upgrades and extensions.<br> Next months we are going to add tabs for decision trees, Principal Component Analysis (PCA) and a few other features.<br>
-This is not a commercial project. We build this page in our free time, and it is open source.<br><br> Please send your suggestions to cheinkler@gmail.com.
+This is not a commercial project. We build this page on our free time, and it is open source.<br><br> Please send your suggestions to cheinkler@gmail.com.
 "
 

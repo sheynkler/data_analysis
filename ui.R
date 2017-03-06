@@ -5,7 +5,7 @@
 library(shiny)
 library(shinythemes)
 library(DT)
-source("modules_ui.R")
+source("ui_file/modules_ui.R")
 
 
 
@@ -31,7 +31,7 @@ shinyUI(
             tabPanel(
               "from computer",
               value = "enter_from_computer",
-              tags$div(class = "small", csvFileInput()),
+              tags$div(class = "small", show_csvFileInput()),
               actionButton("submit_csv_options", "collapse/expand")
             ),
             tabPanel(
@@ -69,12 +69,10 @@ shinyUI(
         conditionalPanel(
           condition = "input.select_data_cluster_model!='Model'",
           uiOutput("select_variables_ui")
-        )
+        ),
+        br(),
         
-        #,
-        
-        #'table_undependet_var()',
-        #table_undependet_var()
+        downloadButton("report_pdf", "Generate report PDF")
         
         
         
@@ -92,7 +90,8 @@ shinyUI(
                    tabPanel("Head",
                             #numericInput("nrow", label = h3("Показать строк"), value = 10),
                             br(),
-                            h4(htmlOutput("first_text")),
+                            h4(firstTextUI("m_test_firstText")),
+                            #h4(htmlOutput("first_text")),
                             dataTableOutput("data_table")),
                    tabPanel(
                      "Summary",
@@ -246,7 +245,10 @@ shinyUI(
                          plotOutput("Hierarchical_cluster_plot")
                        ),
                        tabPanel("Center",
-                                verbatimTextOutput("cluster_center"))
+                                verbatimTextOutput("cluster_center"),br(),
+                                d3heatmapOutput("cluster_center_heatmap")
+                                )
+                       
                      )
                    ),
                    tabPanel(
@@ -256,7 +258,9 @@ shinyUI(
                        tabPanel("Number of clusters",
                                 plotOutput("number_of_clusters")),
                        tabPanel("Center",
-                                verbatimTextOutput("part_cluster_center")),
+                                verbatimTextOutput("part_cluster_center"),br(),
+                                d3heatmapOutput("part_cluster_center_heatmap")
+                                ),
                        tabPanel("Plot",
                                 plotOutput("part_cluster_plot")),
                        tabPanel("Plot 2d",
@@ -264,13 +268,15 @@ shinyUI(
                      )
                    ),
                    tabPanel(
-                     "Based",
+                     "Model-Based",
                      tabsetPanel(
                        type = "tabs",
                        tabPanel("Summary",
                                 verbatimTextOutput("based_summary")),
                        tabPanel("Center",
-                                verbatimTextOutput("based_center")),
+                                verbatimTextOutput("based_center"),br(),
+                                d3heatmapOutput("based_center_heatmap")
+                                ),
                        tabPanel(
                          "Plot",
                          selectInput(

@@ -7,18 +7,23 @@ library(fBasics)
 library(corrplot)
 library(ggplot2)
 library(mclust)
-# source("server_functions.R")
-#options(shiny.maxRequestSize = 9 * 1024 ^ 2)
+library(rmarkdown)
+library(tibble)
+
+source("server_file/server_output.R")
+
 options(shiny.maxRequestSize = 30 * 1024 ^ 2)
-#source("server_functions.R")
+
 
 shinyServer(function(input, output, session) {
-  # INPUT
-  output$first_text <- renderUI({
+  
+'  output$first_text <-   renderUI({
     if (is.null(test_data()) == F)
       return(NULL)
     HTML(first_text)
-  })
+  })'
+  
+  callModule(m_out_first_text, "m_test_firstText", test_data)
   
   
   
@@ -27,22 +32,9 @@ shinyServer(function(input, output, session) {
       shinyjs::toggle(id = "enter", anim = TRUE)
     }
   })
-  output$myFileUI <- renderUI({
-    input$clear
-    input$uploadFormat
-    fileInput(
-      'file1',
-      ' ',
-      accept = c(
-        'text/csv',
-        'text/comma-separated-values',
-        'text/tab-separated-values',
-        'text/plain',
-        '.csv',
-        '.tsv'
-      )
-    )
-  })
+  
+  output$myFileUI <- out_myFileUI(input, output, session)
+  
   test_data <- reactive({
     print(input$file1)
     if (input$tabs_enter == "demo") {
@@ -111,8 +103,10 @@ shinyServer(function(input, output, session) {
     if (is.null(test_data()))
       return(NULL)
     nams <- names(test_data())
+    print(nams)
     radioButtons('dependet_pro', 'Dependent variable', choices = as.list(nams))
   })
+  
   output$undependent <- renderUI({
     if (is.null(test_data()))
       return(NULL)
@@ -126,6 +120,9 @@ shinyServer(function(input, output, session) {
       selected = nams
     )
   })
+  
+  
+  
   output$select_variables_ui <- renderUI({
     if (is.null(test_data()))
       return(NULL)
@@ -413,14 +410,33 @@ shinyServer(function(input, output, session) {
                   border = "red")
     
   })
+  
+  aggregate_groups <- reactive({
+    if (is.null(test_data()))
+      return(NULL)
+        groups <-
+      cutree(Hierarchical_cluster_fit(), k = input$number_clusters)
+    aggregate(cluster_data(), by = list(groups), FUN = mean)
+  })
   output$cluster_center <- renderPrint({
     if (is.null(test_data()))
       return(NULL)
     
-    groups <-
-      cutree(Hierarchical_cluster_fit(), k = input$number_clusters)
-    aggregate(cluster_data(), by = list(groups), FUN = mean)
+    aggregate_groups()
   })
+  
+  output$cluster_center_heatmap <- renderD3heatmap({
+    if (is.null(test_data()))
+      return(NULL)
+
+    D3heatmap_data <- as.data.frame(aggregate_groups())
+    d3heatmap(
+      D3heatmap_data[,-1],
+      colors = "Blues",
+      dendrogram = "none", scale="column", width = 100
+    )
+  })
+  
   output$number_of_clusters <- renderPlot({
     if (is.null(test_data()))
       return(NULL)
@@ -451,6 +467,7 @@ shinyServer(function(input, output, session) {
     
     fit
   })
+  
   output$part_cluster_center <- renderPrint({
     if (is.null(test_data()))
       return(NULL)
@@ -461,6 +478,21 @@ shinyServer(function(input, output, session) {
               FUN = mean)
     
   })
+  output$part_cluster_center_heatmap <- renderD3heatmap({
+    if (is.null(test_data()))
+      return(NULL)
+    fit <- part_cluster_fit()
+    aggregate_groups <-     aggregate(cluster_data(),
+                                      by = list(fit$cluster),
+                                      FUN = mean)
+    D3heatmap_data <- as.data.frame(aggregate_groups)
+    d3heatmap(
+      D3heatmap_data[,-1],
+      colors = "Blues",
+      dendrogram = "none", scale="column", width = 100
+    )
+  })
+  
   output$part_cluster_plot <- renderPlot({
     if (is.null(test_data()))
       return(NULL)
@@ -507,9 +539,9 @@ shinyServer(function(input, output, session) {
     fit <- based_fit()
     which_plot <- input$selectbased_plot
     plot(fit, which_plot)
-  },
-  height = function() {
-    session$clientData$output_based_plot_width
+    },
+    height = function() {
+      session$clientData$output_based_plot_width
   })
   output$based_center <- renderPrint({
     if (is.null(test_data()))
@@ -519,6 +551,20 @@ shinyServer(function(input, output, session) {
     aggregate(mydata,
               by = list(fit$classification),
               FUN = mean)
+  })
+  output$based_center_heatmap <- renderD3heatmap({
+    if (is.null(test_data()))
+      return(NULL)
+    fit <- based_fit()
+    mydata <- cluster_data()
+    D3heatmap_data <- as.data.frame(aggregate(mydata,
+              by = list(fit$classification),
+              FUN = mean))
+    d3heatmap(
+      D3heatmap_data[,-1],
+      colors = "Blues",
+      dendrogram = "none", scale="column"
+    )
   })
   
   output$select_number_of_cluster_ui <- renderUI({
@@ -530,6 +576,35 @@ shinyServer(function(input, output, session) {
   observe({
     print(session$clientData$output_based_plot_width)
   })
+  
+  output$report_pdf <- downloadHandler(
+    # For PDF output, change this to "report.pdf"
+    filename = "report.pdf",
+    content = function(file) {
+      # Copy the report file to a temporary directory before processing it, in
+      # case we don't have write permissions to the current working dir (which
+      # can happen when deployed).
+      tempReport <- file.path(tempdir(), "new.Rmd")
+      file.copy("new.Rmd", tempReport, overwrite = TRUE)
+      
+      # Set up parameters to pass to Rmd document
+      params <- list(
+        number_breaks = input$number_breaks,
+        temp_data = temp_data()
+
+      )
+      
+      # Knit the document, passing in the `params` list, and eval it in a
+      # child of the global environment (this isolates the code in the document
+      # from the code in this app).
+      rmarkdown::render(
+        tempReport,
+        output_file = file,
+        params = params,
+        envir = new.env(parent = globalenv())
+      )
+    }
+  )
   
   
   
