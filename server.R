@@ -17,11 +17,7 @@ options(shiny.maxRequestSize = 30 * 1024 ^ 2)
 
 shinyServer(function(input, output, session) {
   
-'  output$first_text <-   renderUI({
-    if (is.null(test_data()) == F)
-      return(NULL)
-    HTML(first_text)
-  })'
+
   
   callModule(m_out_first_text, "m_test_firstText", test_data)
   

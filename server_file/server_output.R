@@ -1,10 +1,4 @@
-out_first_text <- function(input, output, session, test_data ){
-  renderUI({
-    if (is.null(test_data()) == F)
-      return(NULL)
-    HTML(first_text)
-  })
-}
+
 
 out_myFileUI <- function(input, output, session){
   renderUI({
