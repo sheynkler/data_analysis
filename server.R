@@ -9,6 +9,7 @@ library(ggplot2)
 library(mclust)
 library(rmarkdown)
 library(tibble)
+library(threejs)
 
 source("server_file/server_output.R")
 
@@ -17,10 +18,57 @@ options(shiny.maxRequestSize = 30 * 1024 ^ 2)
 
 shinyServer(function(input, output, session) {
   
+  fit_cluster <- reactiveValues(data = NULL)
+  
+  observeEvent(input$add_cluster_var, {
+    if (is.null(Hierarchical_cluster_fit()) == F) fit_Hierarchical <- Hierarchical_cluster_fit()
+    if (is.null(part_cluster_fit()) == F) part_cluster_fit <- part_cluster_fit()
+    if (is.null(based_fit()) == F) based_fit <- based_fit()
+    
+    groups <- switch(input$select_tabset_cluster,
+                     "Hierarchical" = cutree(fit_Hierarchical, k=input$number_clusters),
+                     "Partitioning" = part_cluster_fit$cluster,
+                     "Model-Based"  = based_fit$classification
+                     )
+    
+    
+    
+    fit_cluster$data <- groups
+    print(fit_cluster$data)
+    fit_cluster$text_add <- "added"
+    updateActionButton(session, "add_cluster_var",
+                       label = "Change cluster groups")
+  })
+  
+  output$cluster_added <- renderText({
+    fit_cluster$text_add
+  })
+  
 
+  ###################################################### Module First Text
   
-  callModule(m_out_first_text, "m_test_firstText", test_data)
+  callModule(mf_s_first_text, "m_name_firstText", test_data)    
   
+  ##############################################################  MOdule hierarchicalCluster
+  
+  number_clusters <- reactive(input$number_clusters)
+  h_cluster_borders <- reactive(input$h_cluster_borders)
+  metode_h_cluster <- reactive(input$metode_h_cluster)
+  
+  callModule(mf_s_hierarchicalCluster, "m_name_hierarchicalCluster", test_data, Hierarchical_cluster_fit,
+             number_clusters, h_cluster_borders)
+  
+  ##################################################################    Module  drawPlot2dCluster
+  
+  callModule(mf_s_drawPlot2dCluster, "m_name_drawPlot2dCluster",  cluster_data, part_cluster_fit)
+  
+  #########################################################################
+  
+  ##################################################################    Module  drawPlot2dCluster
+  
+  callModule(mf_s_drawPlot3dCluster, "m_name_drawPlot3dCluster",  cluster_data, part_cluster_fit)
+  
+  #########################################################################
   
   
   observe({
@@ -32,7 +80,7 @@ shinyServer(function(input, output, session) {
   output$myFileUI <- out_myFileUI(input, output, session)
   
   test_data <- reactive({
-    print(input$file1)
+    
     if (input$tabs_enter == "demo") {
       inFileString <- input$selectDemoData
       if (inFileString == "")
@@ -54,11 +102,14 @@ shinyServer(function(input, output, session) {
       )
     }
     
-    
+
+      
     test_data
     
     
   })
+  
+
   
   # HANDLING
   
@@ -99,7 +150,7 @@ shinyServer(function(input, output, session) {
     if (is.null(test_data()))
       return(NULL)
     nams <- names(test_data())
-    print(nams)
+    
     radioButtons('dependet_pro', 'Dependent variable', choices = as.list(nams))
   })
   
@@ -135,9 +186,14 @@ shinyServer(function(input, output, session) {
   # OUTPUT DATA
   
   output$data_table <- renderDataTable({
-    temp_data <- temp_data()
+
+    temp_data <- test_data()
     if (is.null(temp_data))
       return(temp_data)
+
+
+    if(is.null(fit_cluster$data) == F) temp_data$cluster <- fit_cluster$data
+
     if (class(temp_data) == "data.frame" &
         is.null(temp_data) == F)
       DT::datatable(temp_data,
@@ -176,7 +232,7 @@ shinyServer(function(input, output, session) {
       if (class(temp_data[, j]) %in% num_classes == F)
         temp_data <- temp_data[, -j, drop = F]
     }
-    #print(temp_data)
+    
     temp_data
   })
   output$data_titel <- renderText({
@@ -190,7 +246,7 @@ shinyServer(function(input, output, session) {
   
   output$summary_precisely <- renderDataTable({
     temp_data_numeric <- temp_data_numeric()
-    #print(temp_data_numeric)
+    
     DT::datatable(basicStats(temp_data_numeric) ,
                   options = list(
                     pageLength = 16,
@@ -222,10 +278,11 @@ shinyServer(function(input, output, session) {
     temp_data <- temp_data_numeric()
     M <- cor(temp_data)
     
-    if (input$cor_cov == 1)
-      corrplot(M, method = input$selectKorr)
-    else
-      NULL
+    if (input$cor_cov == 1){
+      if(input$selectKorr == "qgraph"){
+        qgraph(M)
+      } else    corrplot(M, method = input$selectKorr)
+    }    else     NULL
   })
   
   output$simple_scatter <- renderUI({
@@ -354,7 +411,9 @@ shinyServer(function(input, output, session) {
     
     formula_ <- as.formula(ss)
     
-    lm(formula_, data = temp_data)
+    fit <- lm(formula_, data = temp_data)
+    if(input$regression_by_AIC) fit <- step(fit, direction = "both")
+    fit
   })
   output$summary_lm <- renderPrint({
     summary(lm_fit())
@@ -391,21 +450,11 @@ shinyServer(function(input, output, session) {
     else
       mydata <- cluster_data()
     # Ward Hierarchical Clustering
-    d <- dist(mydata, method = "euclidean")
-    fit <- hclust(d, method = "ward.D2")
+    d <- dist(mydata, method = input$metrix_dist)
+    fit <- hclust(d, method = input$metode_h_cluster)
     fit
   })
-  output$Hierarchical_cluster_plot <- renderPlot({
-    if (is.null(test_data()))
-      return(NULL)
-    
-    plot(Hierarchical_cluster_fit())
-    if (input$h_cluster_borders)
-      rect.hclust(Hierarchical_cluster_fit(),
-                  k = input$number_clusters,
-                  border = "red")
-    
-  })
+
   
   aggregate_groups <- reactive({
     if (is.null(test_data()))
@@ -503,13 +552,7 @@ shinyServer(function(input, output, session) {
       lines = 0
     )
   })
-'  output$part_cluster_plot_2d <- renderPlot({
-    if (is.null(test_data()))
-      return(NULL)
-    
-    fit <- part_cluster_fit()
 
-  })'
   
   
   based_fit <- reactive({
@@ -569,9 +612,7 @@ shinyServer(function(input, output, session) {
                  label = ("Number of clusters"),
                  value = 5)
   })
-  observe({
-    print(session$clientData$output_based_plot_width)
-  })
+
   
   output$report_pdf <- downloadHandler(
     # For PDF output, change this to "report.pdf"

@@ -64,7 +64,7 @@ based_cluster_list <- c("BIC",
                         "density")
 
 plot_korrelation <-
-  c("circle", "pie", "color", "number", "square", "ellipse", "shade")
+  c("circle", "pie", "color", "number", "square", "ellipse", "shade", "qgraph")
 #“circle”, “square”, “ellipse”, “number”, “shade”, “color”, “pie”
 
 
@@ -72,7 +72,13 @@ first_text <- "Hi! This is a Data Analysis Page.<br><br>
 You can explore your basic data statistics, and conduct cluster and regression analysis.<br>
 First, you have to upload your data. <br>
 You can also practice on preloaded data from R collection.<br>
-This project is still in process, we are working on upgrades and extensions.<br> Next months we are going to add tabs for decision trees, Principal Component Analysis (PCA) and a few other features.<br>
+This project is still in process, we are working on upgrades and extensions.<br> 
 This is not a commercial project. We build this page on our free time, and it is open source.<br><br> Please send your suggestions to cheinkler@gmail.com.
 "
+metode_hierarchical_cluster <- c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty" , "median" , "centroid")
 
+
+dist_method <- c("euclidean", "maximum", "manhattan", "canberra", "binary" , "minkowski")
+
+mypalette <- palette()
+mypalette[3] <- "green"
